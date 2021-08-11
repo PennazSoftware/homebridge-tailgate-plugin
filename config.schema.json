@@ -1,5 +1,5 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "TailgateHomebridgePlugin",
   "pluginType": "platform",
   "singular": true,
   "schema": {
@@ -9,7 +9,25 @@
         "title": "Name",
         "type": "string",
         "required": true,
-        "default": "Example Dynamic Platform"
+        "default": "Tailgate"
+      },
+      "certPEM": {
+        "title": "Certificate PEM",
+        "type": "string",
+        "required": true,
+        "default": ""
+      },
+      "certPublic": {
+        "title": "Private Key",
+        "type": "string",
+        "required": true,
+        "default": ""
+      },
+      "keyPrivate": {
+        "title": "Public Key",
+        "type": "string",
+        "required": true,
+        "default": ""
       }
     }
   }
