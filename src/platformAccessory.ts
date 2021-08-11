@@ -1,141 +1,156 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
-
-import { ExampleHomebridgePlatform } from './platform';
+import { TailgateHomebridgePlatform } from './platform';
+import { AwsIot, AwsIotTopic } from './awsiot';
+import { readFileSync } from 'fs';
+import { Status } from './status';
 
 /**
- * Platform Accessory
+ * Tailgate Platform Accessory
  * An instance of this class is created for each accessory your platform registers
  * Each accessory may expose multiple services of different service types.
  */
-export class ExamplePlatformAccessory {
+export class TailgatePlatformAccessory {
   private service: Service;
-
-  /**
-   * These are just used to create a working example
-   * You should implement your own code to track the state of your accessory
-   */
-  private exampleStates = {
-    On: false,
-    Brightness: 100,
-  };
+  private awsiot: AwsIot;
+  private currentGateState: Status = {state: '', previousState: '', timestamp: ''};
+  private targetGateState = '';
 
   constructor(
-    private readonly platform: ExampleHomebridgePlatform,
+    private readonly platform: TailgateHomebridgePlatform,
     private readonly accessory: PlatformAccessory,
   ) {
 
     // set accessory information
-    this.accessory.getService(this.platform.Service.AccessoryInformation)!
-      .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Default-Manufacturer')
-      .setCharacteristic(this.platform.Characteristic.Model, 'Default-Model')
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, 'Default-Serial');
+      this.accessory.getService(this.platform.Service.AccessoryInformation)!
+        .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Dan Penn')
+        .setCharacteristic(this.platform.Characteristic.Model, 'Tailgate')
+        .setCharacteristic(this.platform.Characteristic.SerialNumber, '1a2b3c');
 
-    // get the LightBulb service if it exists, otherwise create a new LightBulb service
-    // you can create multiple services for each accessory
-    this.service = this.accessory.getService(this.platform.Service.Lightbulb) || this.accessory.addService(this.platform.Service.Lightbulb);
+      // get the GarageDoorOpener service if it exists, otherwise create a new GarageDoorOpener service
+      // you can create multiple services for each accessory
+      this.service = this.accessory.getService(this.platform.Service.GarageDoorOpener) ||
+      this.accessory.addService(this.platform.Service.GarageDoorOpener);
 
-    // set the service name, this is what is displayed as the default name on the Home app
-    // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
-    this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.exampleDisplayName);
+      // set the service name, this is what is displayed as the default name on the Home app
+      // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
+      this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.displayName);
 
-    // each service must implement at-minimum the "required characteristics" for the given service type
-    // see https://developers.homebridge.io/#/service/Lightbulb
+      // create handlers for required characteristics
+      this.service.getCharacteristic(this.platform.Characteristic.CurrentDoorState)
+        .onGet(this.handleCurrentDoorStateGet.bind(this));
 
-    // register handlers for the On/Off Characteristic
-    this.service.getCharacteristic(this.platform.Characteristic.On)
-      .onSet(this.setOn.bind(this))                // SET - bind to the `setOn` method below
-      .onGet(this.getOn.bind(this));               // GET - bind to the `getOn` method below
+      this.service.getCharacteristic(this.platform.Characteristic.TargetDoorState)
+        .onGet(this.handleTargetDoorStateGet.bind(this))
+        .onSet(this.handleTargetDoorStateSet.bind(this));
 
-    // register handlers for the Brightness Characteristic
-    this.service.getCharacteristic(this.platform.Characteristic.Brightness)
-      .onSet(this.setBrightness.bind(this));       // SET - bind to the 'setBrightness` method below
+      // this.service.getCharacteristic(this.platform.Characteristic.ObstructionDetected)
+      //   .onGet(this.handleObstructionDetectedGet.bind(this));
 
-    /**
-     * Creating multiple services of the same type.
-     *
-     * To avoid "Cannot add a Service with the same UUID another Service without also defining a unique 'subtype' property." error,
-     * when creating multiple services of the same type, you need to use the following syntax to specify a name and subtype id:
-     * this.accessory.getService('NAME') || this.accessory.addService(this.platform.Service.Lightbulb, 'NAME', 'USER_DEFINED_SUBTYPE_ID');
-     *
-     * The USER_DEFINED_SUBTYPE must be unique to the platform accessory (if you platform exposes multiple accessories, each accessory
-     * can use the same sub type id.)
-     */
+      const platformConfig = this.platform.getConfigProperties();
 
-    // Example: add two "motion sensor" services to the accessory
-    const motionSensorOneService = this.accessory.getService('Motion Sensor One Name') ||
-      this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor One Name', 'YourUniqueIdentifier-1');
+      const certPEM = readFileSync(platformConfig.certPEM);
+      const certPublic = readFileSync(platformConfig.keyPrivate);
+      const keyPrivate = readFileSync(platformConfig.certPublic);
 
-    const motionSensorTwoService = this.accessory.getService('Motion Sensor Two Name') ||
-      this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor Two Name', 'YourUniqueIdentifier-2');
-
-    /**
-     * Updating characteristics values asynchronously.
-     *
-     * Example showing how to update the state of a Characteristic asynchronously instead
-     * of using the `on('get')` handlers.
-     * Here we change update the motion sensor trigger states on and off every 10 seconds
-     * the `updateCharacteristic` method.
-     *
-     */
-    let motionDetected = false;
-    setInterval(() => {
-      // EXAMPLE - inverse the trigger
-      motionDetected = !motionDetected;
-
-      // push the new value to HomeKit
-      motionSensorOneService.updateCharacteristic(this.platform.Characteristic.MotionDetected, motionDetected);
-      motionSensorTwoService.updateCharacteristic(this.platform.Characteristic.MotionDetected, !motionDetected);
-
-      this.platform.log.debug('Triggering motionSensorOneService:', motionDetected);
-      this.platform.log.debug('Triggering motionSensorTwoService:', !motionDetected);
-    }, 10000);
+      this.awsiot = new AwsIot(certPEM, certPublic, keyPrivate, this.statusChangedEventHandler.bind(this),
+        this.connectedEventHandler.bind(this), this.errorEventHandler.bind(this), this.platform.log);
   }
 
-  /**
-   * Handle "SET" requests from HomeKit
-   * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
-   */
-  async setOn(value: CharacteristicValue) {
-    // implement your own code to turn your device on/off
-    this.exampleStates.On = value as boolean;
+  // Handle requests to get the current value of the "Current Door State" characteristic
+  handleCurrentDoorStateGet() {
+    this.platform.log.debug('Requested GET CurrentDoorState. State=' + this.currentGateState.state);
 
-    this.platform.log.debug('Set Characteristic On ->', value);
+    const currState = this.getDoorStateFromString(this.currentGateState.state);
+    return currState;
   }
 
-  /**
-   * Handle the "GET" requests from HomeKit
-   * These are sent when HomeKit wants to know the current state of the accessory, for example, checking if a Light bulb is on.
-   *
-   * GET requests should return as fast as possbile. A long delay here will result in
-   * HomeKit being unresponsive and a bad user experience in general.
-   *
-   * If your device takes time to respond you should update the status of your device
-   * asynchronously instead using the `updateCharacteristic` method instead.
+  // Handle requests to get the current value of the "Target Door State" characteristic
+  handleTargetDoorStateGet() {
+    this.platform.log.debug('Requested GET TargetDoorState. State=' + this.targetGateState);
 
-   * @example
-   * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
-   */
-  async getOn(): Promise<CharacteristicValue> {
-    // implement your own code to check if the device is on
-    const isOn = this.exampleStates.On;
+    let targetState = this.platform.Characteristic.TargetDoorState.OPEN;
+    if (this.targetGateState === 'close') {
+      targetState = this.platform.Characteristic.TargetDoorState.CLOSED;
+    }
 
-    this.platform.log.debug('Get Characteristic On ->', isOn);
-
-    // if you need to return an error to show the device as "Not Responding" in the Home app:
-    // throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
-
-    return isOn;
+    return targetState;
   }
 
-  /**
-   * Handle "SET" requests from HomeKit
-   * These are sent when the user changes the state of an accessory, for example, changing the Brightness
-   */
-  async setBrightness(value: CharacteristicValue) {
-    // implement your own code to set the brightness
-    this.exampleStates.Brightness = value as number;
+  // Handle requests to set the "Target Door State" characteristic
+  handleTargetDoorStateSet(value: CharacteristicValue) {
+    let command = '';
 
-    this.platform.log.debug('Set Characteristic Brightness -> ', value);
+    switch (value) {
+      case this.platform.Characteristic.TargetDoorState.OPEN:
+        command = 'open';
+        this.targetGateState = 'open';
+        break;
+      case this.platform.Characteristic.TargetDoorState.CLOSED:
+        command = 'close';
+        this.targetGateState = 'close';
+        break;
+    }
+
+    this.platform.log.info('Command Issued: CurrentState=' + this.currentGateState.state + ', TargetState=' + command);
+
+    this.awsiot.Publish(AwsIotTopic.Command, command);
   }
 
+  // Event Handlers
+
+  // Handle status changed event
+  statusChangedEventHandler(topic: string, message: string, packet: string) {
+    this.platform.log.debug('message: ' + message);
+    const status: Status = JSON.parse(message);
+    this.currentGateState = status;
+
+    this.platform.log.info('Gate Status Changed: ' + status.state + ', Topic=' + topic + ', Packet=' + packet);
+
+    const currState = this.getDoorStateFromString(status.state);
+
+    this.platform.log.info('Updated this.currentGateState=' + this.currentGateState.state + ', currState=' + currState);
+
+    this.service.updateCharacteristic(this.platform.Characteristic.CurrentDoorState, currState);
+  }
+
+  connectedEventHandler() {
+    this.platform.log.info('Connected to AwsIot endpoint!');
+  }
+
+  errorEventHandler(error: string) {
+    this.platform.log.debug('AwsIot error: ' + error);
+  }
+
+  getDoorStateFromString(state: string) {
+
+    let currentState = this.platform.Characteristic.CurrentDoorState.STOPPED;
+
+    //state = 'closing';
+
+    this.platform.log.debug('converting \'' + state + '\'...');
+    switch (state) {
+      case 'open': {
+        currentState = this.platform.Characteristic.CurrentDoorState.OPEN;
+        break;
+      }
+      case 'opening': {
+        currentState = this.platform.Characteristic.CurrentDoorState.OPENING;
+        break;
+      }
+      case 'closed': {
+        currentState = this.platform.Characteristic.CurrentDoorState.CLOSED;
+        break;
+      }
+      case 'closing': {
+        currentState = this.platform.Characteristic.CurrentDoorState.CLOSING;
+        break;
+      }
+      case 'stopped': {
+        currentState = this.platform.Characteristic.CurrentDoorState.STOPPED;
+        break;
+      }
+    }
+
+    return currentState;
+  }
 }
