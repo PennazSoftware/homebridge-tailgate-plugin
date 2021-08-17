@@ -1,5 +1,5 @@
 {
-  "private": true,
+  "private": false,
   "displayName": "Tailgate Gate Controller",
   "name": "homebridge-tailgate-plugin",
   "version": "1.0.1-beta.0",
