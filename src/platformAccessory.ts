@@ -6,7 +6,7 @@ import { Status } from './status';
 
 /**
  * Tailgate Platform Accessory
- * An instance of this class is created for each accessory your platform registers
+ * An instance of this class is created for each accessory the platform registers.
  * Each accessory may expose multiple services of different service types.
  */
 export class TailgatePlatformAccessory {
@@ -54,6 +54,15 @@ export class TailgatePlatformAccessory {
 
       this.awsiot = new AwsIot(certPEM, certPublic, keyPrivate, this.statusChangedEventHandler.bind(this),
         this.connectedEventHandler.bind(this), this.errorEventHandler.bind(this), this.platform.log);
+
+      // Send a request for an updated status
+      this.platform.log.debug('requesting status since we do not know what it is right now');
+      const cmdJSON = {
+        command: 'status',
+      };
+
+      this.awsiot.Publish(AwsIotTopic.Command, JSON.stringify(cmdJSON));
+      this.platform.log.debug('requesting status completed');
   }
 
   // Handle requests to get the current value of the "Current Door State" characteristic
@@ -78,22 +87,26 @@ export class TailgatePlatformAccessory {
 
   // Handle requests to set the "Target Door State" characteristic
   handleTargetDoorStateSet(value: CharacteristicValue) {
-    let command = '';
+    let cmd = '';
 
     switch (value) {
       case this.platform.Characteristic.TargetDoorState.OPEN:
-        command = 'open';
+        cmd = 'open';
         this.targetGateState = 'open';
         break;
       case this.platform.Characteristic.TargetDoorState.CLOSED:
-        command = 'close';
+        cmd = 'close';
         this.targetGateState = 'close';
         break;
     }
 
-    this.platform.log.info('Command Issued: CurrentState=' + this.currentGateState.state + ', TargetState=' + command);
+    const cmdJSON = {
+      command: cmd,
+    };
 
-    this.awsiot.Publish(AwsIotTopic.Command, command);
+    this.platform.log.info('Command Issued: CurrentState=' + this.currentGateState.state + ', TargetState=' + cmd);
+
+    this.awsiot.Publish(AwsIotTopic.Command, JSON.stringify(cmdJSON));
   }
 
   // Event Handlers
