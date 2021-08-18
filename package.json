@@ -3,7 +3,7 @@
   "displayName": "Tailgate Gate Controller",
   "name": "homebridge-tailgate-plugin",
   "version": "1.0.1-beta.0",
-  "description": "A short description about what your plugin does.",
+  "description": "A Homebridge plugin for controlling Tailgate brand gate controllers.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

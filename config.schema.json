@@ -11,20 +11,20 @@
         "required": true,
         "default": "Tailgate"
       },
-      "certPEM": {
-        "title": "Certificate PEM",
+      "awsiotCert": {
+        "title": "AWSIOT Certificate",
         "type": "string",
         "required": true,
         "default": ""
       },
-      "certPublic": {
-        "title": "Private Key",
+      "awsiotPrivate": {
+        "title": "AWSIOT Private Key",
         "type": "string",
         "required": true,
         "default": ""
       },
-      "keyPrivate": {
-        "title": "Public Key",
+      "awsiotRootCACert": {
+        "title": "AWSIOT Root CA Certificate",
         "type": "string",
         "required": true,
         "default": ""

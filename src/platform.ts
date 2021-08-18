@@ -114,9 +114,9 @@ export class TailgateHomebridgePlatform implements DynamicPlatformPlugin {
   getConfigProperties() {
     return {
       name: this.config.name,
-      certPEM: this.config.certPEM,
-      certPublic: this.config.certPublic,
-      keyPrivate: this.config.keyPrivate,
+      cert: this.config.awsiotCert,
+      privateKey: this.config.awsiotPrivate,
+      rootCACert: this.config.awsiotRootCACert,
     };
   }
 }

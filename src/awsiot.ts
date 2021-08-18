@@ -13,7 +13,7 @@ export class AwsIot {
     private mqttClient: MqttClient;
 
     // Constructor
-    constructor(certPem: Buffer, certPublic: Buffer, keyPrivate: Buffer, messageCallback: messageCallback,
+    constructor(rootCA: Buffer, privateKey: Buffer, cert: Buffer, messageCallback: messageCallback,
       connectCallback: () => void, errorCallback: errorCallback, log: Logger) {
       const date_ob = new Date();
       this.clientID = 'BDGate' + date_ob.getSeconds();
@@ -24,12 +24,19 @@ export class AwsIot {
         clientId: this.clientID,
         clean: true,
         rejectUnauthorized: false,
-        ca:certPem,
-        key:keyPrivate,
-        cert:certPublic,
+        ca:rootCA,
+        key:privateKey,
+        cert:cert,
       };
 
-      this.mqttClient = mqtt.connect(this.mqttServer, cliOptions);
+      //log.debug(cert);
+      try {
+        this.mqttClient = mqtt.connect(this.mqttServer, cliOptions);
+      } catch (e) {
+        log.error('Failed to connect to AWSIOT. Verify certificates are valid. ' + e);
+        this.mqttClient = mqtt.connect(this.mqttServer);
+        return;
+      }
 
       // Register handlers
       this.mqttClient.on('message', messageCallback);
