@@ -1,7 +1,7 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
 import { TailgateHomebridgePlatform } from './platform';
 import { AwsIot, AwsIotTopic } from './awsiot';
-import { readFileSync } from 'fs';
+//import { readFileSync } from 'fs';
 import { Status } from './status';
 
 /**
@@ -48,58 +48,13 @@ export class TailgatePlatformAccessory {
 
       const platformConfig = this.platform.getConfigProperties();
 
-      // ../../../../certs/certificate.pem.crt
-
-      //const rootCACert = readFileSync('../../../../certs/AmazonRootCA3_256ECC.pem');
-      //const privateKey = readFileSync('../../../../certs/private.pem.key');
-      //const cert = readFileSync('../../../../certs/certificate.pem.crt');
-
       const rootCACert = cleanCert(platformConfig.rootCACert);
       const privateKey = cleanCert(platformConfig.privateKey);
       const cert = cleanCert(platformConfig.cert);
 
-      // this.platform.log.debug(cert2);
-      // this.platform.log.debug(cert);
-
-      // let diffCount = 0;
-      // for (let x=0; x<cert2.length; x++) {
-      //   if (cert2.charCodeAt(x) !== cert.charCodeAt(x)) {
-      //     this.platform.log.debug(x + ': ' + cert2.charCodeAt(x) + '/' + cert.charCodeAt(x) + '\t' + cert2[x] + '/' + cert[x]);
-      //     diffCount++;
-      //     if (diffCount > 1) {
-      //       break;
-      //     }
-      //   }
-      // }
-
-      // if (diffCount === 0) {
-      //   this.platform.log.debug('certs are identical!');
-      // }
-
-      // compare
-      // let output = '';
-      // for (let x=0; x<cert.length; x++) {
-      //   if (cert.charCodeAt(x) === '\n'.charCodeAt(0)) {
-      //     this.platform.log.debug(output);
-      //     output = '';
-      //   } else {
-      //     output += cert.charCodeAt(x).toString(16) + ' ';
-      //   }
-      // }
-      // this.platform.log.debug(output);
-
       this.awsiot = new AwsIot(rootCACert, privateKey, cert,
         this.statusChangedEventHandler.bind(this), this.connectedEventHandler.bind(this),
         this.errorEventHandler.bind(this), this.platform.log);
-
-    // // Send a request for an updated status
-    // this.platform.log.debug('requesting status since we do not know what it is right now');
-    // const cmdJSON = {
-    //   command: 'status',
-    // };
-
-    // this.awsiot.Publish(AwsIotTopic.Command, JSON.stringify(cmdJSON));
-    // this.platform.log.debug('requesting status completed');
   }
 
   // Handle requests to get the current value of the "Current Door State" characteristic
