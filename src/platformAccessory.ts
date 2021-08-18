@@ -180,6 +180,6 @@ function cleanCert(cert: string) {
   }
 
   cleanCert += '\n';
-
-  return Buffer.from(cleanCert, 'utf-8');
+  return cleanCert;
+  //return Buffer.from(cleanCert, 'utf-8');
 }

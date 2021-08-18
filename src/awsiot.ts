@@ -13,7 +13,7 @@ export class AwsIot {
     private mqttClient: MqttClient;
 
     // Constructor
-    constructor(rootCA: Buffer, privateKey: Buffer, cert: Buffer, messageCallback: messageCallback,
+    constructor(rootCA: string, privateKey: string, cert: string, messageCallback: messageCallback,
       connectCallback: () => void, errorCallback: errorCallback, log: Logger) {
       const date_ob = new Date();
       this.clientID = 'BDGate' + date_ob.getSeconds();
