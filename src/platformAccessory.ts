@@ -59,15 +59,15 @@ export class TailgatePlatformAccessory {
 
   // Handle requests to get the current value of the "Current Door State" characteristic
   handleCurrentDoorStateGet() {
-    this.platform.log.debug('Requested GET CurrentDoorState. State=' + this.currentGateState.state);
-
     const currState = this.getDoorStateFromString(this.currentGateState.state);
+
+    this.platform.log.info('Requested GET CurrentDoorState. State=' + this.currentGateState.state + ' currentEnumState=' + currState);
     return currState;
   }
 
   // Handle requests to get the current value of the "Target Door State" characteristic
   handleTargetDoorStateGet() {
-    this.platform.log.debug('Requested GET TargetDoorState. State=' + this.targetGateState);
+    this.platform.log.info('Requested GET TargetDoorState. State=' + this.targetGateState);
 
     let targetState = this.platform.Characteristic.TargetDoorState.OPEN;
     if (this.targetGateState === 'close') {
@@ -154,6 +154,8 @@ export class TailgatePlatformAccessory {
         currentState = this.platform.Characteristic.CurrentDoorState.STOPPED;
         break;
       }
+      default:
+        this.platform.log.info('failed to convert string state to enum value. stringState=' + state);
     }
 
     return currentState;
